@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: cmis-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cmis
+      POSTGRES_USER: cmis_user
+      POSTGRES_PASSWORD: cmis_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - cmis-network
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cmis-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cmis.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - cmis-network
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: cmis-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://cmis_user:cmis_password@db:5432/cmis
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+    networks:
+      - cmis-network
+    volumes:
+      - ./server/logs:/app/logs
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: cmis-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cmis-network
+
+volumes:
+  postgres_data:
+
+networks:
+  cmis-network:
+    driver: bridge

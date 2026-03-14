@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: cmis-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cmis_dev
+      POSTGRES_USER: cmis_user
+      POSTGRES_PASSWORD: cmis_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - cmis-dev-network
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cmis-pgadmin-dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cmis.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - cmis-dev-network
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  cmis-dev-network:
+    driver: bridge
